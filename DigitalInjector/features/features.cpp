@@ -1,3 +1,5 @@
+#include <Windows.h>
+#include <TlHelp32.h>
 #include "features.h"
 
 void features::error_log( const char* message ) {
@@ -16,48 +18,54 @@ std::string features::random_string( const size_t length ) {
 	return r;
 }
 
-bool features::does_file_exist( const char* name ) {
-	if ( FILE* file = fopen( name, "r" ) ) {
-		fclose( file );
+errno_t features::does_file_exist(const char* name) {
+	FILE* file;
+	errno_t err = fopen_s(&file, name, "r");
+	if (err == 0 && file != nullptr)
+	{
+		fclose(file);
 		return true;
 	}
-
 	return false;
 }
 
-DWORD features::get_process_id( const char* process_name ) {
-	const HANDLE h_snap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, NULL );
+DWORD features::get_process_id(const char* process_name) {
+	const HANDLE h_snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
 
 	PROCESSENTRY32 pe32{};
 	pe32.dwSize = sizeof pe32;
 
-	if ( !Process32First( h_snap, &pe32 ) )
+	if (!Process32First(h_snap, &pe32))
 		return NULL;
 
 	do {
-		if ( !strcmp( pe32.szExeFile, process_name ) ) {
-			CloseHandle( h_snap );
+		wchar_t w_process_name[MAX_PATH];
+		size_t num_converted;
+		mbstowcs_s(&num_converted, w_process_name, process_name, MAX_PATH);
+		if (!_wcsicmp(pe32.szExeFile, w_process_name)) {
+			CloseHandle(h_snap);
 			return pe32.th32ProcessID;
 		}
-	} while ( Process32Next( h_snap, &pe32 ) );
+	} while (Process32Next(h_snap, &pe32));
 
-	CloseHandle( h_snap );
+	CloseHandle(h_snap);
 	return NULL;
-
 }
 
-uintptr_t features::get_module_base_address( const DWORD pid, const char* mod_name ) {
-	const HANDLE h_snap = CreateToolhelp32Snapshot( TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid );
-	if ( h_snap != INVALID_HANDLE_VALUE ) {
+
+
+uintptr_t features::get_module_base_address(const DWORD pid, const wchar_t* mod_name) {
+	const HANDLE h_snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
+	if (h_snap != INVALID_HANDLE_VALUE) {
 		MODULEENTRY32 mod_entry{};
 		mod_entry.dwSize = sizeof mod_entry;
-		if ( Module32First( h_snap, &mod_entry ) ) {
+		if (Module32First(h_snap, &mod_entry)) {
 			do {
-				if ( !strcmp( mod_entry.szModule, mod_name ) ) {
-					CloseHandle( h_snap );
-					return reinterpret_cast< uintptr_t >( mod_entry.modBaseAddr );
+				if (!_wcsicmp(mod_entry.szModule, mod_name)) {
+					CloseHandle(h_snap);
+					return reinterpret_cast<uintptr_t>(mod_entry.modBaseAddr);
 				}
-			} while ( Module32Next( h_snap, &mod_entry ) );
+			} while (Module32Next(h_snap, &mod_entry));
 		}
 	}
 	return 0;
