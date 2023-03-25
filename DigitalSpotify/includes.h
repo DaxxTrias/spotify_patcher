@@ -7,8 +7,6 @@
 #include <iostream>
 #include <cstdio>
 #include <intrin.h>
-#include <MinHook.h>
-#pragma comment( lib, "MinHook.lib" )
 
 namespace ctx {
 	namespace structs {

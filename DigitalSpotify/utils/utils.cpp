@@ -1,8 +1,20 @@
 #include "utils.h"
 
-void utils::open_console( ) {
-	AllocConsole( );
-	freopen( "CONOUT$", "w", stdout );
+//void utils::open_console( ) {
+//	AllocConsole( );
+//	freopen( "CONOUT$", "w", stdout );
+//}
+
+void utils::open_console() {
+	// Allocate a console
+	AllocConsole();
+
+	// Open CONOUT$ using freopen_s to safely redirect stdout to the console
+	FILE* fp;
+	freopen_s(&fp, "CONOUT$", "w", stdout);
+
+	// Set the output buffer to be unbuffered, to prevent delay in console output
+	setvbuf(stdout, nullptr, _IONBF, 0);
 }
 
 void utils::shutdown( ) {
